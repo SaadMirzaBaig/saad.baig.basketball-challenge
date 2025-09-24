@@ -45,7 +45,6 @@ public class GameplayUI : MonoBehaviour
     private void SubscribeToEvents()
     {
         ScoreManager.OnScoreUpdated += UpdateScore;
-        ScoreManager.OnShotStatsUpdated += UpdateShotStats;
         ScoreManager.OnBackboardBonus += ShowBonusPopup;
         GameManager.OnTimeUpdated += UpdateTime;
         GameManager.OnGameStateChanged += OnGameStateChanged;
@@ -54,7 +53,6 @@ public class GameplayUI : MonoBehaviour
     private void UnsubscribeFromEvents()
     {
         ScoreManager.OnScoreUpdated -= UpdateScore;
-        ScoreManager.OnShotStatsUpdated -= UpdateShotStats;
         ScoreManager.OnBackboardBonus -= ShowBonusPopup;
         GameManager.OnTimeUpdated -= UpdateTime;
         GameManager.OnGameStateChanged -= OnGameStateChanged;
@@ -94,12 +92,6 @@ public class GameplayUI : MonoBehaviour
         {
             timeText.gameObject.SetActive(false);
         }
-    }
-
-    private void UpdateShotStats(int successful, int total)
-    {
-        // This can be used for additional UI elements showing shooting statistics
-        Debug.Log($"Shot Stats: {successful}/{total}");
     }
 
     private void ShowBonusPopup(int bonusPoints)

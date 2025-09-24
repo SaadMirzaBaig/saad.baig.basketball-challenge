@@ -1,5 +1,5 @@
 using UnityEngine;
-using System;
+
 public class BasketDetector : MonoBehaviour
 {
     [Header("Basket Detection Setup")]
@@ -23,7 +23,7 @@ public class BasketDetector : MonoBehaviour
         GameObject detectionZone = new GameObject("BasketDetectionZone");
         detectionZone.transform.parent = transform;
 
-        // Position detection zone below hoop center
+        // Position the detection zone below hoop center
         if (hoopCenter != null)
         {
             detectionZone.transform.position = hoopCenter.position + Vector3.down * detectionHeight;
@@ -53,12 +53,30 @@ public class BasketDetector : MonoBehaviour
         BallController ball = ballCollider.GetComponent<BallController>();
         if (ball == null) return;
 
+
         Debug.Log("Ball found! HasScored: " + ball.HasScored +  ", IsInFlight: " +ball.IsInFlight);
+
+
+        var tag = ballCollider.GetComponent<ShotTag>();
+        bool isPerfect;
+        bool hasBackboardBonus;
+
+        isPerfect = tag.shotIntent == ShotTag.IntentType.Perfect;
+        hasBackboardBonus = tag.shotIntent == ShotTag.IntentType.Backboard;
+
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.RegisterShot(
+                isSuccessful: true,
+                isPerfect: isPerfect,
+                hasBackboardBonus: hasBackboardBonus
+            );
+        }
 
         // Notify the ball that it scored
         ball.OnBallScored();
 
-        Debug.Log("BASKET! Ball successfully entered the hoop!");
+        Debug.Log("BASKET! Ball successfully entered the hoop with tag ! " + tag.shotIntent);
     }
 
     public void OnBallExitDetection(Collider ballCollider)

@@ -70,6 +70,7 @@ public class ScoreManager : MonoBehaviour
     public void RegisterShot(bool isSuccessful, bool isPerfect = false, bool hasBackboardBonus = false)
     {
         totalShots++;
+        Debug.Log($"Shot registered: Success={isSuccessful}, Perfect={isPerfect}, Backboard={hasBackboardBonus}");
 
         if (isSuccessful)
         {

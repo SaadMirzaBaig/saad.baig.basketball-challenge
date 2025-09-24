@@ -1,10 +1,10 @@
 using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
 using System;
+
 public class BallController : MonoBehaviour
 {
-    [Header("Ball Physics Settings")]
-    public float shotPowerMultiplier = 3f;
-    public float maxShotPower = 2f;
     public PhysicMaterial ballPhysicsMaterial;
 
     [Header("Ball State")]
@@ -14,6 +14,7 @@ public class BallController : MonoBehaviour
     private Rigidbody rb;
     private Vector3 startPosition;
 
+    public static Action<BallController> OnBallShotEvent;
 
     private void Awake()
     {
@@ -31,7 +32,7 @@ public class BallController : MonoBehaviour
         }
 
         rb.mass = 0.6f; // Standard basketball mass
-        rb.drag = 0.47f; // Basketball drag coefficient
+        rb.drag = 0; // Basketball drag coefficient
         rb.useGravity = true;
 
         // Setup Collider
@@ -59,7 +60,7 @@ public class BallController : MonoBehaviour
         {
 
             // Check if ball has fallen too low or stopped
-            if (transform.position.y < -2f || rb.position.y > 10 || rb.velocity.magnitude < 0.5f)
+            if (transform.position.y < -2f  || transform.position.z > 5.5f )
             {
 
                 Debug.Log("Ball missed resetting the position");
@@ -68,6 +69,7 @@ public class BallController : MonoBehaviour
         }
     }
 
+ 
     public void OnBallScored()
     {
 
@@ -78,7 +80,7 @@ public class BallController : MonoBehaviour
         // Reset ball after short delay
         Invoke(nameof(ResetBall), 2f);
     }
-
+    
     public void ResetBall()
     {
         // Reset position
@@ -94,7 +96,6 @@ public class BallController : MonoBehaviour
 
         Debug.Log("Ball reset to starting position");
     }
-
 
     public bool IsInFlight => isInFlight;
     public bool HasScored => hasScored;
