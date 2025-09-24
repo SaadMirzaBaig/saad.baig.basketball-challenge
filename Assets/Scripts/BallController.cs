@@ -64,7 +64,7 @@ public class BallController : MonoBehaviour
             {
 
                 Debug.Log("Ball missed resetting the position");
-                ResetBall();
+                Invoke(nameof(ResetBall),2f);
             }
         }
     }
