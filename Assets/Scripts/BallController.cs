@@ -1,7 +1,5 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
-using System;
 
 public class BallController : MonoBehaviour
 {
@@ -14,12 +12,14 @@ public class BallController : MonoBehaviour
     private Rigidbody rb;
     private Vector3 startPosition;
 
-    public static Action<BallController> OnBallShotEvent;
+    private int currentPos = 0;
+    [SerializeField] private List<Transform> newBallPosition;
 
     private void Awake()
     {
         SetupBallComponents();
-        startPosition = transform.position;
+        SetNewPosition();
+        //startPosition = transform.position;
     }
 
     private void SetupBallComponents()
@@ -59,12 +59,12 @@ public class BallController : MonoBehaviour
         if (isInFlight)
         {
 
-            // Check if ball has fallen too low or stopped
-            if (transform.position.y < -2f  || transform.position.z > 5.5f )
+            // the speed is slowing down
+            if (rb.velocity.magnitude < 2 )
             {
 
                 Debug.Log("Ball missed resetting the position");
-                Invoke(nameof(ResetBall),2f);
+                ResetBall();
             }
         }
     }
@@ -72,19 +72,24 @@ public class BallController : MonoBehaviour
  
     public void OnBallScored()
     {
-
         hasScored = true;
-
         Debug.Log("GOAL! Ball scored!");
-
-        // Reset ball after short delay
-        Invoke(nameof(ResetBall), 2f);
     }
     
     public void ResetBall()
     {
+        //If the ball is missed Resgister it with missed target
+        if (isInFlight && !hasScored)
+        {
+            ScoreManager.Instance?.RegisterShot(
+                isSuccessful: false,
+                isPerfect: false,
+                hasBackboardBonus: false
+            );
+        }
+
         // Reset position
-        transform.position = startPosition;
+        SetNewPosition();
 
         // Reset physics
         rb.velocity = Vector3.zero;
@@ -97,6 +102,20 @@ public class BallController : MonoBehaviour
         Debug.Log("Ball reset to starting position");
     }
 
-    public bool IsInFlight => isInFlight;
-    public bool HasScored => hasScored;
+    private void SetNewPosition()
+    {
+        Debug.Log("setting up new position");
+        if(currentPos < newBallPosition.Count)
+        {
+            transform.position = newBallPosition[currentPos].position;
+            currentPos++;
+        }
+        else
+        {
+            currentPos = 0;
+            transform.position = newBallPosition[currentPos].position;
+
+        }
+
+    }
 }

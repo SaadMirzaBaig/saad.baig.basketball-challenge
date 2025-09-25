@@ -53,10 +53,6 @@ public class BasketDetector : MonoBehaviour
         BallController ball = ballCollider.GetComponent<BallController>();
         if (ball == null) return;
 
-
-        Debug.Log("Ball found! HasScored: " + ball.HasScored +  ", IsInFlight: " +ball.IsInFlight);
-
-
         var tag = ballCollider.GetComponent<ShotTag>();
         bool isPerfect;
         bool hasBackboardBonus;

@@ -14,7 +14,6 @@ public class BallThrow : MonoBehaviour
 
     [Header("Rigidbody")]
     public Rigidbody ballRigidbody;
-
     private ShotTag ballShotTag;
 
     private void Start()
@@ -165,39 +164,43 @@ public class BallThrow : MonoBehaviour
     {
         ThrowAtTarget_WithAngle(hoopTarget.position, 55f);
 
-        SetShotIntent(ShotTag.IntentType.Perfect);
+        SetShotIntent(ShotTag.IntentType.Perfect,true);
     }
 
     public void ThrowBackboardShot()
     {
         ThrowAtTarget_WithAngle(backboardTarget.position, 55f);
-        SetShotIntent(ShotTag.IntentType.Backboard);
+        SetShotIntent(ShotTag.IntentType.Backboard,true);
 
     }
 
     public void ThrowNormalShot()
     {
         ThrowAtTarget_WithTime(normalTarget.position,1.5f);
-        SetShotIntent(ShotTag.IntentType.Normal);
+        SetShotIntent(ShotTag.IntentType.Normal,true);
 
     }
 
     public void ThrowAtRing()
     {
         ThrowAtTarget_WithAngle(ringTarget.position, 55f);
+        SetShotIntent(ShotTag.IntentType.Ring, false);
     }
 
     public void ThrowAwayShot()
     {
         ThrowAtTarget_WithAngle(awayTarget.position, 40f);
-        SetShotIntent(ShotTag.IntentType.Away);
+        SetShotIntent(ShotTag.IntentType.Away, false);
     }
 
 
-    void SetShotIntent(ShotTag.IntentType intent)
+    void SetShotIntent(ShotTag.IntentType intent, bool isScored)
     {
         ballRigidbody.GetComponent<BallController>().isInFlight = true;
+        ballRigidbody.GetComponent<BallController>().hasScored = isScored;
+
         ballShotTag.shotIntent = intent;
-      
+        
+        
     }
 }
