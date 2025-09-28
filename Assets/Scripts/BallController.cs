@@ -18,10 +18,14 @@ public class BallController : MonoBehaviour
     //Current position index
     private int currentPos = 0;
 
+    // Audio integration
+    private SwipeShotController swipeShotController;
+
     private void Awake()
     {
         SetupBallComponents();
         SetNewPosition();
+        FindSwipeShotController();
     }
 
     private void SetupBallComponents()
@@ -73,6 +77,16 @@ public class BallController : MonoBehaviour
         ballConfig.minYResetThreshold = Constants.DEFAULT_MIN_Y_RESET_THRESHOLD;
     }
 
+    // Finds and caches the SwipeShotController for audio integration
+    private void FindSwipeShotController()
+    {
+        swipeShotController = FindAnyObjectByType<SwipeShotController>();
+        if (swipeShotController == null)
+        {
+            Debug.LogWarning("BallController: No SwipeShotController found in scene. Collision sounds will not play.");
+        }
+    }
+
 
     private void FixedUpdate()
     {
@@ -118,7 +132,7 @@ public class BallController : MonoBehaviour
     //Reset ball properties
     public void ResetBall()
     {
-        //If the ball is missed Resgister it with missed target
+        //If the ball is missed Register it with missed target
         if (isInFlight && !hasScored)
         {
             ScoreManager.Instance?.RegisterShot(
@@ -163,5 +177,24 @@ public class BallController : MonoBehaviour
 
         }
 
+    }
+
+    // Handles collision detection for ring and backboard hits
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Only play sounds when ball is in flight
+        if (!isInFlight || swipeShotController == null)
+            return;
+
+        // Check collision with ring
+        if (collision.gameObject.CompareTag(Constants.RING_TAG))
+        {
+            swipeShotController.PlayRingHitSound();
+        }
+        // Check collision with backboard
+        else if (collision.gameObject.CompareTag(Constants.BACKBOARD_TAG))
+        {
+            swipeShotController.PlayBackboardHitSound();
+        }
     }
 }

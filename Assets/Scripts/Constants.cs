@@ -2,6 +2,8 @@ public static class Constants
 {
     // Tags
     public const string BALL_TAG = "Ball";
+    public const string RING_TAG = "Hoop";
+    public const string BACKBOARD_TAG = "Backboard";
 
     // Scene names
     public const string MAIN_MENU_SCENE = "MainMenu";

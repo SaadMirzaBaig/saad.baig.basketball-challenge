@@ -8,7 +8,6 @@ public enum GameState
     MainMenu,
     Playing,
     Paused,
-    GameOver,
     Reward
 }
 
@@ -16,11 +15,15 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    [Header("Configuration")]
-    [SerializeField] private GameConfiguration gameConfig;
+    // Configuration is now handled by ConfigurationManager
 
     [Header("Current Game State")]
     public GameState currentState = GameState.MainMenu;
+    private GameState previousState = GameState.MainMenu;
+
+
+    // Events for state changes
+    public static event Action<GameState> OnStateChanged;
 
 
     private void Awake()
@@ -30,7 +33,6 @@ public class GameManager : MonoBehaviour
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            ValidateGameSettings();
             InitializeGame();
         }
         else
@@ -46,6 +48,7 @@ public class GameManager : MonoBehaviour
         SubscribeToStateEvents();
     }
 
+
     //On destroy to unsubscribe from events
     private void OnDestroy()
     {
@@ -55,21 +58,13 @@ public class GameManager : MonoBehaviour
     //Subscribe to state events
     private void SubscribeToStateEvents()
     {
-        GameStateManager.OnStateChanged += OnStateChanged;
         GameDataManager.OnTimeExpired += OnTimeExpired;
     }
 
     //Unsubscribe from state events
     private void UnsubscribeFromStateEvents()
     {
-        GameStateManager.OnStateChanged -= OnStateChanged;
         GameDataManager.OnTimeExpired -= OnTimeExpired;
-    }
-
-    //On state changed
-    private void OnStateChanged(GameState newState)
-    {
-        currentState = newState;
     }
 
     //On time expired - called when game timer runs out
@@ -80,39 +75,14 @@ public class GameManager : MonoBehaviour
 
 
 
-    //Validate game settings
-    private void ValidateGameSettings()
-    {
-        if (gameConfig == null)
-        {
-            Debug.LogError("GameManager: GameConfiguration is not assigned! Using default values.");
-            CreateDefaultGameConfig();
-        }
-    }
-
-    //Create default game configuration if not assigned
-    private void CreateDefaultGameConfig()
-    {
-        gameConfig = ScriptableObject.CreateInstance<GameConfiguration>();
-        gameConfig.gameTime = Constants.DEFAULT_GAME_TIME;
-        gameConfig.maxGameTime = Constants.DEFAULT_MAX_GAME_TIME;
-        gameConfig.minGameTime = Constants.DEFAULT_MIN_GAME_TIME;
-        gameConfig.perfectShotPoints = Constants.PERFECT_SHOT_POINTS;
-        gameConfig.normalShotPoints = Constants.NORMAL_SHOT_POINTS;
-        gameConfig.backboardBonusPoints = new int[] { Constants.DEFAULT_BONUS_POINTS_1, Constants.DEFAULT_BONUS_POINTS_2, Constants.DEFAULT_BONUS_POINTS_3 };
-        gameConfig.bonusPeriodInterval = Constants.DEFAULT_BONUS_PERIOD_INTERVAL;
-        gameConfig.bonusPeriodDuration = Constants.DEFAULT_BONUS_PERIOD_DURATION;
-        gameConfig.bonusPeriodVariation = Constants.DEFAULT_BONUS_PERIOD_VARIATION;
-        gameConfig.scoreThresholds = new int[] { Constants.DEFAULT_SCORE_THRESHOLD_1, Constants.DEFAULT_SCORE_THRESHOLD_2, Constants.DEFAULT_SCORE_THRESHOLD_3 };
-    }
 
     //Initialize game with default values
     void InitializeGame()
     {   
         //Initialize game data
-        if (GameDataManager.Instance != null)
+        if (GameDataManager.Instance != null && ConfigurationManager.Instance != null)
         {
-            GameDataManager.Instance.SetGameTime(gameConfig.gameTime);
+            GameDataManager.Instance.SetGameTime(ConfigurationManager.Instance.GetGameTime());
         }
     }
 
@@ -122,9 +92,9 @@ public class GameManager : MonoBehaviour
         try
         {
             // Reset game data
-            if (GameDataManager.Instance != null)
+            if (GameDataManager.Instance != null && ConfigurationManager.Instance != null)
             {
-                GameDataManager.Instance.SetGameTime(gameConfig.gameTime);
+                GameDataManager.Instance.SetGameTime(ConfigurationManager.Instance.GetGameTime());
                 GameDataManager.Instance.ResetGameData();
             }
 
@@ -162,13 +132,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    //End game and change state to game over
+    //End game and go directly to reward
     public void EndGame()
     {
         try
         {
-            ChangeGameState(GameState.GameOver);
-
             if (string.IsNullOrEmpty(Constants.REWARD_SCENE))
             {
                 Debug.LogError("GameManager: Reward scene name is null or empty!");
@@ -176,6 +144,7 @@ public class GameManager : MonoBehaviour
             }
 
             SceneManager.LoadScene(Constants.REWARD_SCENE);
+            ChangeGameState(GameState.Reward);
         }
         catch (System.Exception e)
         {
@@ -209,13 +178,70 @@ public class GameManager : MonoBehaviour
     //Change game state
     void ChangeGameState(GameState newState)
     {
+        if (currentState == newState) return;
+
+        previousState = currentState;
         currentState = newState;
-        
-        // Update centralized state manager
-        if (GameStateManager.Instance != null)
+
+        // Handle state-specific logic
+        HandleStateTransition(previousState, currentState);
+
+        // Notify listeners
+        OnStateChanged?.Invoke(currentState);
+    }
+
+    //Handles state-specific transition logic
+    private void HandleStateTransition(GameState fromState, GameState toState)
+    {
+        switch (toState)
         {
-            GameStateManager.Instance.ChangeState(newState);
+            case GameState.MainMenu:
+                HandleMainMenuTransition(fromState);
+                break;
+            case GameState.Playing:
+                HandlePlayingTransition(fromState);
+                break;
+            case GameState.Paused:
+                HandlePausedTransition(fromState);
+                break;
+            case GameState.Reward:
+                HandleRewardTransition(fromState);
+                break;
         }
-        
+    }
+    
+    //Handles the main menu transition
+    private void HandleMainMenuTransition(GameState fromState)
+    {
+        Time.timeScale = 1f;
+        Debug.Log("GameManager: Transitioned to MainMenu from " + fromState);
+    }
+    
+    //Handles the playing transition
+    private void HandlePlayingTransition(GameState fromState)
+    {
+        if (fromState == GameState.Paused)
+        {
+            Time.timeScale = 1f;
+        }
+        Debug.Log("GameManager: Transitioned to Playing from " + fromState);
+    }
+
+    //Handles the paused transition
+    private void HandlePausedTransition(GameState fromState)
+    {
+        if (fromState == GameState.Playing)
+        {
+            Time.timeScale = 0f;
+        }
+        Debug.Log("GameManager: Transitioned to Paused from " + fromState);
+    }
+
+
+    //Handles the reward transition
+    private void HandleRewardTransition(GameState fromState)
+    {
+        Time.timeScale = 1f;
+        Debug.Log("GameManager: Transitioned to Reward from " + fromState);
     }
 }

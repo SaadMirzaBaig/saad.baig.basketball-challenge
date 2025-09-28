@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7524072f1d651c64a8282425762591c5, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  gameTime: 30
+  gameTime: 60
   maxGameTime: 300
   minGameTime: 20
   perfectShotPoints: 3
@@ -21,5 +21,5 @@ MonoBehaviour:
   bonusPeriodInterval: 5
   bonusPeriodDuration: 4
   bonusPeriodVariation: 1
-  scoreThresholds: 140000003200000064000000
+  scoreThresholds: 0a0000001e00000032000000
   enableValidation: 1

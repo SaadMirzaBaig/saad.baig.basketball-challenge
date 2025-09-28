@@ -1,15 +1,9 @@
 using UnityEngine;
 using System;
 
-/// <summary>
-/// Manages game data operations and provides centralized data access
-/// </summary>
 public class GameDataManager : MonoBehaviour
 {
     public static GameDataManager Instance { get; private set; }
-
-    [Header("Data Settings")]
-    [SerializeField] private bool enableDataLogging = true;
 
     private GameData currentGameData;
     private bool isTimerRunning = false;
@@ -49,7 +43,7 @@ public class GameDataManager : MonoBehaviour
         {
             currentGameData.remainingTime -= Time.deltaTime;
             
-            // Only notify when time hits a new second (not every frame!)
+            // Only notify when time hits a new second
             int currentSecond = Mathf.CeilToInt(currentGameData.remainingTime);
             if (currentSecond != lastTimeSecond)
             {
@@ -69,7 +63,7 @@ public class GameDataManager : MonoBehaviour
     //Subscribe to state events
     private void SubscribeToStateEvents()
     {
-        GameStateManager.OnStateChanged += OnGameStateChanged;
+        GameManager.OnStateChanged += OnGameStateChanged;
     }
 
     //On destroy to unsubscribe from events
@@ -81,7 +75,7 @@ public class GameDataManager : MonoBehaviour
     //Unsubscribe from state events
     private void UnsubscribeFromStateEvents()
     {
-        GameStateManager.OnStateChanged -= OnGameStateChanged;
+        GameManager.OnStateChanged -= OnGameStateChanged;
     }
 
     //Reset game data when game state changed
@@ -111,10 +105,6 @@ public class GameDataManager : MonoBehaviour
     {
         currentGameData.Reset();
         
-        if (enableDataLogging)
-        {
-            Debug.Log("GameDataManager: Game data reset");
-        }
     }
 
     //Update the remaining game time
@@ -214,5 +204,47 @@ public class GameDataManager : MonoBehaviour
         }
     }
 
+}
 
+//Data structure containing current game information
+[System.Serializable]
+public class GameData
+{
+    [Header("Game Progress")]
+    public float remainingTime = 60f;
+    public int currentScore = 0;
+    public int totalShots = 0;
+    public int successfulShots = 0;
+    public int perfectShots = 0;
+    public int backboardBonuses = 0;
+
+    [Header("Game Settings")]
+    public float gameTime = 60f;
+    public bool isBonusPeriodActive = false;
+    public int currentBonusPoints = 0;
+
+    [Header("Ball State")]
+    public bool isBallInFlight = false;
+    public bool hasBallScored = false;
+
+    //Calculates and returns the current accuracy percentage
+    public float GetAccuracy()
+    {
+        return totalShots > 0 ? (float)successfulShots / totalShots * 100f : 0f;
+    }
+
+    //Resets all game data to initial values
+    public void Reset()
+    {
+        remainingTime = gameTime;
+        currentScore = 0;
+        totalShots = 0;
+        successfulShots = 0;
+        perfectShots = 0;
+        backboardBonuses = 0;
+        isBonusPeriodActive = false;
+        currentBonusPoints = 0;
+        isBallInFlight = false;
+        hasBallScored = false;
+    }
 }

@@ -14,11 +14,25 @@ public class BasketDetector : MonoBehaviour
     // To avoid repeated GetComponent calls
     private BallController ballController;
     private ShotTag shotTag;
+    
+    // Audio integration
+    private SwipeShotController swipeShotController;
 
 
     private void Awake()
     {
         SetupBasketDetection();
+        FindSwipeShotController();
+    }
+    
+    // Finds and caches the SwipeShotController for audio integration
+    private void FindSwipeShotController()
+    {
+        swipeShotController = FindAnyObjectByType<SwipeShotController>();
+        if (swipeShotController == null)
+        {
+            Debug.LogWarning("BasketDetector: No SwipeShotController found in scene. Score audio will not play.");
+        }
     }
 
     //Setup basket detection zone
@@ -74,6 +88,12 @@ public class BasketDetector : MonoBehaviour
                 isPerfect: isPerfect,
                 hasBackboardBonus: hasBackboardBonus
             );
+        }
+
+        // Play score sound
+        if (swipeShotController != null)
+        {
+            swipeShotController.PlayScoreSound();
         }
 
         // Notify the ball that it scored

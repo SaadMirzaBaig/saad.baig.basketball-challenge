@@ -6,8 +6,7 @@ public class ScoreManager : MonoBehaviour
 {
     public static ScoreManager Instance { get; private set; }
 
-    [Header("Configuration")]
-    [SerializeField] private GameConfiguration gameConfig;
+    // Configuration is now handled by ConfigurationManager
 
     //Bonus period management
     [Header ("Bonus Period")]
@@ -43,13 +42,13 @@ public class ScoreManager : MonoBehaviour
     //Subscribe to state events
     private void SubscribeToStateEvents()
     {
-        GameStateManager.OnStateChanged += OnStateChanged;
+        GameManager.OnStateChanged += OnStateChanged;
     }
 
     //Unsubscribe from state events
     private void UnsubscribeFromStateEvents()
     {
-        GameStateManager.OnStateChanged -= OnStateChanged;
+        GameManager.OnStateChanged -= OnStateChanged;
     }
 
     //Reset and start/stop bonus period cycle when playing
@@ -60,7 +59,7 @@ public class ScoreManager : MonoBehaviour
             ResetScore();
             StartBonusPeriodCycle();
         }
-        else if (newState == GameState.GameOver || newState == GameState.Paused)
+        else if (newState == GameState.Paused || newState == GameState.Reward)
         {
             StopBonusPeriodCycle();
         }
@@ -100,18 +99,19 @@ public class ScoreManager : MonoBehaviour
         while (true)
         {
             // Wait for the interval (with random variation)
-            float waitTime = gameConfig.bonusPeriodInterval + UnityEngine.Random.Range(0f, gameConfig.bonusPeriodVariation);
+            float waitTime = ConfigurationManager.Instance.GetBonusPeriodInterval() + UnityEngine.Random.Range(0f, ConfigurationManager.Instance.GetBonusPeriodVariation());
             yield return new WaitForSeconds(waitTime);
 
             // Generate random bonus points for this period
-            currentBonusPoints = gameConfig.backboardBonusPoints[UnityEngine.Random.Range(0, gameConfig.backboardBonusPoints.Length)];
+            int[] bonusPoints = ConfigurationManager.Instance.GetBackboardBonusPoints();
+            currentBonusPoints = bonusPoints[UnityEngine.Random.Range(0, bonusPoints.Length)];
 
             // Start bonus period
             isBonusPeriodActive = true;
             OnBonusPeriodStarted?.Invoke(currentBonusPoints);
 
             // Wait for bonus period duration
-            yield return new WaitForSeconds(gameConfig.bonusPeriodDuration);
+            yield return new WaitForSeconds(ConfigurationManager.Instance.GetBonusPeriodDuration());
 
             // End bonus period
             isBonusPeriodActive = false;
@@ -144,7 +144,7 @@ public class ScoreManager : MonoBehaviour
 
         if (isSuccessful)
         {
-            int points = isPerfect ? gameConfig.perfectShotPoints : gameConfig.normalShotPoints;
+            int points = isPerfect ? ConfigurationManager.Instance.GetPerfectShotPoints() : ConfigurationManager.Instance.GetNormalShotPoints();
 
             if (isPerfect)
             {
@@ -168,7 +168,8 @@ public class ScoreManager : MonoBehaviour
         if (GameDataManager.Instance != null)
         {
             GameData currentData = GameDataManager.Instance.GetCurrentGameData();
-            GameDataManager.Instance.UpdateScore(currentData.currentScore + points);
+            int newScore = currentData.currentScore + points;
+            GameDataManager.Instance.UpdateScore(newScore);
         }
     }
 

@@ -8,8 +8,8 @@ public class SwipeShotController : MonoBehaviour
     [SerializeField]private BallThrow ballThrow;
 
     [Header("Swipe Settings")]
-    [SerializeField]private float swipeThreshold = 100f;
-    private float sliderSpeed = 900f; // how quivk to fill the slider
+    [SerializeField]private float swipeThreshold = 20f;
+    [SerializeField] private float sliderSpeed = 900f; // how quivk to fill the slider
     [SerializeField] private float swipeTimeLimit = 0.5f; // Max time allowed for swipe
 
     [SerializeField] private float shotTypeDisplayDuration = 2.0f; // How long to show the shot type before resetting
@@ -36,7 +36,9 @@ public class SwipeShotController : MonoBehaviour
 
     [Header("Audio")]
     [SerializeField] private AudioClip swipeStartSound;
-    [SerializeField] private AudioClip shotSelectedSound;
+    [SerializeField] private AudioClip scoreSound;
+    [SerializeField] private AudioClip ringHitSound;
+    [SerializeField] private AudioClip backboardHitSound;
 
     // Input tracking
     private bool isSwipeActive = false;
@@ -92,9 +94,7 @@ public class SwipeShotController : MonoBehaviour
         SetupAudioSource();
     }
 
-    /// <summary>
-    /// Validates and sets up the BallThrow reference
-    /// </summary>
+    // Validates and sets up the BallThrow reference
     private void ValidateBallThrowReference()
     {
         if (ballThrow == null)
@@ -109,9 +109,7 @@ public class SwipeShotController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Validates and sets up the BallController reference
-    /// </summary>
+    // Validates and sets up the BallController reference
     private void ValidateBallControllerReference()
     {
         if (ballController == null)
@@ -126,9 +124,7 @@ public class SwipeShotController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sets up the audio source component
-    /// </summary>
+    // Sets up the audio source component
     private void SetupAudioSource()
     {
         audioSource = GetComponent<AudioSource>();
@@ -215,7 +211,6 @@ public class SwipeShotController : MonoBehaviour
        
         selectedShotType = ShotType.None;
 
-        PlaySound(swipeStartSound);
 
         
     }
@@ -265,6 +260,8 @@ public class SwipeShotController : MonoBehaviour
         // Update shot type display
         UpdateShotTypeDisplay();
 
+        PlaySound(swipeStartSound);
+
         // Execute the selected shot
         ExecuteShot(selectedShotType);
 
@@ -313,7 +310,6 @@ public class SwipeShotController : MonoBehaviour
 
         try
         {
-            PlaySound(shotSelectedSound);
 
             switch (shotType)
             {
@@ -420,6 +416,24 @@ public class SwipeShotController : MonoBehaviour
         {
             audioSource.PlayOneShot(clip);
         }
+    }
+
+    // Plays sound when ball scores
+    public void PlayScoreSound()
+    {
+        PlaySound(scoreSound);
+    }
+
+    // Plays sound when ball hits the ring
+    public void PlayRingHitSound()
+    {
+        PlaySound(ringHitSound);
+    }
+
+    // Plays sound when ball hits the backboard
+    public void PlayBackboardHitSound()
+    {
+        PlaySound(backboardHitSound);
     }
 
 

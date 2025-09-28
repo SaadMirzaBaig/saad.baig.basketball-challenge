@@ -16,31 +16,11 @@ public class RewardUI : MonoBehaviour
     [Header("Star Rating")]
     public GameObject[] stars;
     
-    [Header("Configuration")]
-    [SerializeField] private GameConfiguration gameConfig;
 
-    // Start is called before the first frame update
     void Start()
     {
-        ValidateConfiguration();
         SetupButtons();
         DisplayResults();
-    }
-
-    //Validate and create default game configuration if not assigned
-    private void ValidateConfiguration()
-    {
-        if (gameConfig == null)
-        {
-            Debug.LogError("RewardUI: GameConfiguration is not assigned! Using default values.");
-            CreateDefaultGameConfig();
-        }
-    }
-
-    private void CreateDefaultGameConfig()
-    {
-        gameConfig = ScriptableObject.CreateInstance<GameConfiguration>();
-        gameConfig.scoreThresholds = new int[] { 20, 50, 100 };
     }
     
     //Setup all UI buttons
@@ -83,13 +63,24 @@ public class RewardUI : MonoBehaviour
     private void DisplayStarRating(int score)
     {
         if (stars == null || stars.Length == 0)
+        {
+            Debug.LogWarning("RewardUI: Stars array is null or empty!");
             return;
+        }
+
+        if (ConfigurationManager.Instance == null)
+        {
+            Debug.LogError("RewardUI: ConfigurationManager.Instance is null!");
+            return;
+        }
 
         int earnedStars = 0;
 
-        for (int i = 0; i < gameConfig.scoreThresholds.Length; i++)
+        int[] scoreThresholds = ConfigurationManager.Instance.GetScoreThresholds();
+        
+        for (int i = 0; i < scoreThresholds.Length; i++)
         {
-            if (score >= gameConfig.scoreThresholds[i])
+            if (score >= scoreThresholds[i])
             {
                 earnedStars = i + 1;
             }
@@ -97,13 +88,16 @@ public class RewardUI : MonoBehaviour
 
         for (int i = 0; i < stars.Length; i++)
         {
-
             if (stars[i] != null)
             {
-                stars[i].SetActive(i < earnedStars);
+                bool shouldShow = i < earnedStars;
+                stars[i].SetActive(shouldShow);
+            }
+            else
+            {
+                Debug.LogWarning($"RewardUI: Star {i + 1} is null!");
             }
         }
-
     }
 
 

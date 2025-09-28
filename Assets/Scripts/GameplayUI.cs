@@ -63,6 +63,7 @@ public class GameplayUI : MonoBehaviour
         ScoreManager.OnBackboardBonus += ShowBonusPopup;
         ScoreManager.OnBonusPeriodStarted += OnBonusPeriodStarted;
         ScoreManager.OnBonusPeriodEnded += OnBonusPeriodEnded;
+        GameManager.OnStateChanged += OnGameStateChanged;
     }
 
     //Unsubscribe from all events
@@ -73,6 +74,7 @@ public class GameplayUI : MonoBehaviour
         ScoreManager.OnBackboardBonus -= ShowBonusPopup;
         ScoreManager.OnBonusPeriodStarted -= OnBonusPeriodStarted;
         ScoreManager.OnBonusPeriodEnded -= OnBonusPeriodEnded;
+        GameManager.OnStateChanged -= OnGameStateChanged;
     }
 
     //Initialize all UI elements

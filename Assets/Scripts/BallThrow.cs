@@ -307,9 +307,9 @@ public class BallThrow : MonoBehaviour
 
    
 
-    //Set the shot intent and starts ball flight
-    /// <param name="intent">The type of shot being attempted</param>
-    /// <param name="isScored">Whether this shot should be considered successful</param>
+    // Set the shot intent and starts ball flight
+    // intent: The type of shot being attempted
+    // isScored: Whether this shot should be considered successful
     void SetShotIntent(ShotTag.IntentType intent, bool isScored)
     {
         if (ballController != null)
