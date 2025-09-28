@@ -9,33 +9,28 @@ public class SwipeShotController : MonoBehaviour
 
     [Header("Swipe Settings")]
     [SerializeField]private float swipeThreshold = 100f;
-    private float sliderSpeed = 800f; // how quivk to fill the slider
-    [SerializeField] private float swipeTimeLimit = 2f; // Max time allowed for swipe
+    private float sliderSpeed = 900f; // how quivk to fill the slider
+    [SerializeField] private float swipeTimeLimit = 0.5f; // Max time allowed for swipe
 
     [Header("Shot Zones (0-1 range)")]
     [Range(0f, 1f)]
-    [SerializeField] private float perfectShotZoneStart = 0.4f; // perefet start
+    [SerializeField] private float perfectShotZoneStart = 0.5f; // perefet start
     [Range(0f, 1f)]
-    [SerializeField] private float perfectShotZoneEnd = 0.7f;   // perfet end
+    [SerializeField] private float perfectShotZoneEnd = 0.58f;   // perfet end
     [Range(0f, 1f)]
-    [SerializeField] private float backboardShotZoneStart = 0.7f; // bavkboard start  
+    [SerializeField] private float backboardShotZoneStart = 0.8f; // bavkboard start  
     [Range(0f, 1f)]
     [SerializeField] private float backboardShotZoneEnd = 0.9f;   // bavkboard end
     [Range(0f, 1f)]
     [SerializeField] private float ringShotZoneStart = 0f; // ringshot start
     [Range(0f, 1f)]
-    [SerializeField] private float ringShotZoneEnd = 0.38f; // ringshot end
+    [SerializeField] private float ringShotZoneEnd = 0.4f; // ringshot end
+
+
 
     [Header("UI References")]
     [SerializeField] private Slider shotPowerSlider;
-    [SerializeField] private Image sliderFill;
     [SerializeField] private TMP_Text shotTypeText;
-
-    [Header("Visual Feedback")]
-    [SerializeField] private Color normalZoneColor = Color.white;
-    [SerializeField] private Color perfectZoneColor = Color.green;
-    [SerializeField] private Color backboardZoneColor = Color.blue;
-    [SerializeField] private Color awayZoneColor = Color.red;
 
     [Header("Audio")]
     [SerializeField] private AudioClip swipeStartSound;
@@ -51,6 +46,7 @@ public class SwipeShotController : MonoBehaviour
 
     // Components
     private AudioSource audioSource;
+    private BallController ballController;
 
     // Shot selection
     public enum ShotType
@@ -65,26 +61,74 @@ public class SwipeShotController : MonoBehaviour
 
     private ShotType selectedShotType = ShotType.None;
 
+    // UI caching to avoid per-frame allocations/updates
+    private string lastShotTypeDisplayed;
+    private float lastSliderValue = -1f;
+
 
     private void Start()
     {
         InitializeComponents();
         SetupUI();
     }
-
+    
     private void Update()
     {
-        if (!CanAcceptInput()) return;
-
+        // Only update UI when actively swiping
+        if (isSwipeActive)
+        {
+            UpdateUI();
+        }
         HandleInput();
-        UpdateUI();
     }
+
 
     private void InitializeComponents()
     {
-        if (ballThrow == null)
-            ballThrow = FindAnyObjectByType<BallThrow>();
+        ValidateBallThrowReference();
+        ValidateBallControllerReference();
+        SetupAudioSource();
+    }
 
+    /// <summary>
+    /// Validates and sets up the BallThrow reference
+    /// </summary>
+    private void ValidateBallThrowReference()
+    {
+        if (ballThrow == null)
+        {
+            ballThrow = FindAnyObjectByType<BallThrow>();
+            if (ballThrow == null)
+            {
+                Debug.LogError("SwipeShotController: No BallThrow component found in scene! Disabling component.");
+                enabled = false;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates and sets up the BallController reference
+    /// </summary>
+    private void ValidateBallControllerReference()
+    {
+        if (ballController == null)
+        {
+            ballController = FindAnyObjectByType<BallController>();
+            if (ballController == null)
+            {
+                Debug.LogError("SwipeShotController: No BallController component found in scene! Disabling component.");
+                enabled = false;
+                return;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets up the audio source component
+    /// </summary>
+    private void SetupAudioSource()
+    {
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
@@ -96,37 +140,27 @@ public class SwipeShotController : MonoBehaviour
 
     private void SetupUI()
     {
-        if (shotPowerSlider != null)
-        {
-            shotPowerSlider.minValue = 0f;
-            shotPowerSlider.maxValue = 1f;
-            shotPowerSlider.value = 0f;
-            shotPowerSlider.interactable = false; // Controlled via swipe
-        }
 
         if (shotTypeText != null)
-            shotTypeText.text = GetShotTypeDisplayName(ShotType.None);
-
-        if (sliderFill != null)
-            sliderFill.color = normalZoneColor;
-    }
-
-    private bool CanAcceptInput()
-    {
-
-        // Don't accept input if ball is in flight
-        if (ballThrow != null && ballThrow.ballRigidbody != null)
         {
-            BallController ballController = ballThrow.ballRigidbody.GetComponent<BallController>();
-            if (ballController != null && ballController.isInFlight)
-                return false;
+            lastShotTypeDisplayed = GetShotTypeDisplayName(ShotType.None);
+            shotTypeText.text = lastShotTypeDisplayed;
         }
 
-        return true;
     }
 
     private void HandleInput()
     {
+                // Block input when game is paused
+        if (GameManager.Instance != null && GameManager.Instance.currentState == GameState.Paused)
+        {
+            return;
+        }
+        // Block input while ball is in flight
+        if (ballController != null && ballController.isInFlight)
+        {
+            return;
+        }
         // Mouse
         if (Input.GetMouseButtonDown(0))
         {
@@ -181,7 +215,7 @@ public class SwipeShotController : MonoBehaviour
 
         PlaySound(swipeStartSound);
 
-        Debug.Log("Swipe started");
+        
     }
 
     private void UpdateSwipe(Vector2 screenPosition)
@@ -203,9 +237,6 @@ public class SwipeShotController : MonoBehaviour
             currentSwipePower = swipePower;
         }
 
-        // Determine shot type based on power
-        selectedShotType = GetShotTypeFromPower(currentSwipePower);
-
         // Check time limit
         if (Time.time - swipeStartTime > swipeTimeLimit)
         {
@@ -226,6 +257,11 @@ public class SwipeShotController : MonoBehaviour
             CancelSwipe();
             return;
         }
+        // Determine shot type based on power
+        selectedShotType = GetShotTypeFromPower(currentSwipePower);
+
+        // Update shot type display
+        UpdateShotTypeDisplay();
 
         // Execute the selected shot
         ExecuteShot(selectedShotType);
@@ -238,8 +274,7 @@ public class SwipeShotController : MonoBehaviour
         isSwipeActive = false;
         currentSwipePower = 0f;
         selectedShotType = ShotType.None;
-
-        Debug.Log("Swipe cancelled - not enough distance");
+        UpdateShotTypeDisplay();
     }
 
     private ShotType GetShotTypeFromPower(float power)
@@ -260,6 +295,10 @@ public class SwipeShotController : MonoBehaviour
         {
             return ShotType.Away;
         }
+        else if(power >=ringShotZoneEnd &&  power <= perfectShotZoneStart)
+        {
+            return ShotType.Normal;
+        }
         else
         {
             return ShotType.Normal;
@@ -268,48 +307,46 @@ public class SwipeShotController : MonoBehaviour
 
     private void ExecuteShot(ShotType shotType)
     {
-        if (ballThrow == null)
+
+
+        try
         {
-            Debug.LogError("BallThrow reference not assigned!");
-            return;
+            PlaySound(shotSelectedSound);
+
+            switch (shotType)
+            {
+                case ShotType.Ring:
+                    ballThrow.ThrowAtRing();
+                    break;
+
+                case ShotType.Perfect:
+                    ballThrow.ThrowPerfectShot();
+                    break;
+
+                case ShotType.Backboard:
+                    ballThrow.ThrowBackboardShot();
+                    break;
+
+                case ShotType.Normal:
+                    ballThrow.ThrowNormalShot();
+                    break;
+
+                case ShotType.Away:
+                    ballThrow.ThrowAwayShot();
+                    break;
+
+                default:
+                    Debug.LogWarning("SwipeShotController: Unknown shot type, defaulting to normal shot.");
+                    ballThrow.ThrowNormalShot();
+                    break;
+            }
+
+            Invoke(nameof(ResetUIAfterDelay), 0.5f);
         }
-
-        PlaySound(shotSelectedSound);
-
-        switch (shotType)
+        catch (System.Exception e)
         {
-            case ShotType.Ring:
-                ballThrow.ThrowAtRing();
-                Debug.Log("Ring Shot exeCuted");
-                break;
-
-            case ShotType.Perfect:
-                ballThrow.ThrowPerfectShot();
-                Debug.Log("Perfect Shot executed!");
-                break;
-
-            case ShotType.Backboard:
-                ballThrow.ThrowBackboardShot();
-                Debug.Log("Backboard Shot executed!");
-                break;
-
-            case ShotType.Normal:
-                ballThrow.ThrowNormalShot();
-                Debug.Log("Normal Shot executed!");
-                break;
-
-            case ShotType.Away:
-                ballThrow.ThrowAwayShot();
-                Debug.Log("Away Shot executed!");
-                break;
-
-            default:
-                ballThrow.ThrowNormalShot();
-                Debug.Log("Default Normal Shot executed!");
-                break;
+            Debug.LogError("SwipeShotController: Failed to execute shot: " + e.Message);
         }
-
-        Invoke(nameof(ResetUIAfterDelay), 2f);
     }
 
     private void UpdateUI()
@@ -317,55 +354,46 @@ public class SwipeShotController : MonoBehaviour
         // Slider value follows model state
         if (shotPowerSlider != null)
         {
-            shotPowerSlider.value = currentSwipePower;
+            if (!Mathf.Approximately(lastSliderValue, currentSwipePower))
+            {
+                lastSliderValue = currentSwipePower;
+                shotPowerSlider.value = currentSwipePower;
+            }
         }
 
-        // Slider color based on shot type
-        UpdateSliderColor(selectedShotType);
-
-        // Shot type label
-        if (shotTypeText != null)
-        {
-            shotTypeText.text = GetShotTypeDisplayName(selectedShotType);
-        }
     }
 
-    private void UpdateSliderColor(ShotType shotType)
+    private void UpdateShotTypeDisplay()
     {
-        if (sliderFill == null) return;
-
-        Color targetColor;
-
-        switch (shotType)
+        if (shotTypeText != null)
         {
-            case ShotType.Perfect:
-                targetColor = perfectZoneColor;
-                break;
-            case ShotType.Backboard:
-                targetColor = backboardZoneColor;
-                break;
-            case ShotType.Away:
-                targetColor = awayZoneColor;
-                break;
-            case ShotType.Normal:
-            case ShotType.None:
-            default:
-                targetColor = normalZoneColor;
-                break;
+            string newShotTypeDisplay = GetShotTypeDisplayName(selectedShotType);
+            
+            // Only update if the text has changed to avoid unnecessary string allocations
+            if (newShotTypeDisplay != lastShotTypeDisplayed)
+            {
+                lastShotTypeDisplayed = newShotTypeDisplay;
+                shotTypeText.text = lastShotTypeDisplayed;
+            }
         }
-
-        sliderFill.color = targetColor;
     }
 
     private string GetShotTypeDisplayName(ShotType shotType)
     {
         switch (shotType)
         {
-            case ShotType.Perfect: return "PERFECT SHOT";
-            case ShotType.Backboard: return "BACKBOARD SHOT";
-            case ShotType.Away: return "AWAY SHOT";
-            case ShotType.Normal: return "NORMAL SHOT";
-            default: return "SWIPE UP TO SHOOT";
+            case ShotType.Perfect: 
+                return "PERFECT SHOT";
+            case ShotType.Backboard: 
+                return "BACKBOARD SHOT";
+            case ShotType.Away: 
+                return "AWAY SHOT";
+            case ShotType.Normal: 
+                return "NORMAL SHOT";
+            case ShotType.Ring:
+                return "RING SHOT";
+            default: 
+                return "SWIPE UP TO SHOOT";
         }
     }
 
@@ -376,12 +404,12 @@ public class SwipeShotController : MonoBehaviour
         currentSwipePower = 0f;
         selectedShotType = ShotType.None;
 
+        lastSliderValue = -1f; // force next UpdateUI to write 0
         if (shotPowerSlider != null) shotPowerSlider.value = 0f;
-        if (sliderFill != null) sliderFill.fillAmount = 0f;
-        if (shotTypeText != null) shotTypeText.text = GetShotTypeDisplayName(selectedShotType);
+        lastShotTypeDisplayed = GetShotTypeDisplayName(selectedShotType);
+        if (shotTypeText != null) shotTypeText.text = lastShotTypeDisplayed;
 
 
-        Debug.Log("Swipe UI reset after delay.");
     }
 
     private void PlaySound(AudioClip clip)
@@ -389,6 +417,17 @@ public class SwipeShotController : MonoBehaviour
         if (audioSource != null && clip != null)
         {
             audioSource.PlayOneShot(clip);
+        }
+    }
+
+
+
+    private void OnGameStateChanged(GameState newState)
+    {
+        // Cancel any active swipe when game is paused
+        if (newState == GameState.Paused && isSwipeActive)
+        {
+            CancelSwipe();
         }
     }
 

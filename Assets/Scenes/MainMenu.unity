@@ -372,6 +372,8 @@ GameObject:
   - component: {fileID: 344205276}
   - component: {fileID: 344205275}
   - component: {fileID: 344205277}
+  - component: {fileID: 344205279}
+  - component: {fileID: 344205280}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -391,9 +393,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 83844031faceaf540a0bea03310aaef8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gameTime: 60
+  gameConfig: {fileID: 11400000, guid: a0e1804208134a04ead73f511eaed2bd, type: 2}
   currentState: 0
-  remainingTime: 0
 --- !u!4 &344205276
 Transform:
   m_ObjectHideFlags: 0
@@ -421,14 +422,46 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a5f4c0dfc771e2444a2400a743e9a34d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  perfectShotPoints: 3
-  normalShotPoints: 2
-  backboardBonusPoints: 040000000600000008000000
-  currentScore: 0
-  totalShots: 0
-  successfulShots: 0
-  perfectShots: 0
-  backboardBonuses: 0
+  gameConfig: {fileID: 11400000, guid: a0e1804208134a04ead73f511eaed2bd, type: 2}
+--- !u!114 &344205279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344205274}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60291d680bc1c404a8c8c978a1ba73e7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  enableDataLogging: 0
+--- !u!114 &344205280
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344205274}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: deb32d5d33687024aab4dec2dd707e56, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  currentState: 0
+  previousState: 0
+  currentGameData:
+    remainingTime: 60
+    currentScore: 0
+    totalShots: 0
+    successfulShots: 0
+    perfectShots: 0
+    backboardBonuses: 0
+    gameTime: 60
+    isBonusPeriodActive: 0
+    currentBonusPoints: 0
+    isBallInFlight: 0
+    hasBallScored: 0
 --- !u!1 &417288444
 GameObject:
   m_ObjectHideFlags: 0

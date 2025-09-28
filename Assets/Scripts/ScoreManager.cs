@@ -1,26 +1,24 @@
 using UnityEngine;
 using System;
+using System.Collections;
 
 public class ScoreManager : MonoBehaviour
 {
-
     public static ScoreManager Instance { get; private set; }
 
-    [Header("Scoring Settings")]
-    public int perfectShotPoints = 3;
-    public int normalShotPoints = 2;
-    public int[] backboardBonusPoints = { 4, 6, 8 };
+    [Header("Configuration")]
+    [SerializeField] private GameConfiguration gameConfig;
 
-    [Header ("Game Stats")]
-    public int currentScore = 0;
-    public int totalShots = 0;
-    public int successfulShots = 0;
-    public int perfectShots = 0;
-    public int backboardBonuses = 0;
+    //Bonus period management
+    [Header ("Bonus Period")]
+    //Is bonus period active
+    private bool isBonusPeriodActive = false;
+    private Coroutine bonusPeriodCoroutine;
+    private int currentBonusPoints = 0; // Store the current bonus period's points
 
-    public static event Action<int> OnScoreUpdated;
-    public static event Action<int, int> OnShotStatsUpdated; // successful, total
     public static event Action<int> OnBackboardBonus;
+    public static event Action<int> OnBonusPeriodStarted; // Now passes the bonus points
+    public static event Action OnBonusPeriodEnded;
 
 
     private void Awake()
@@ -38,98 +36,157 @@ public class ScoreManager : MonoBehaviour
 
     private void Start()
     {
-        GameManager.OnGameStateChanged += OnGameStateChanged;
+        SubscribeToStateEvents(); //Subscribe to state events
+        StartBonusPeriodCycle(); //Start bonus period cycle
     }
 
-    private void OnDestroy()
+    //Subscribe to state events
+    private void SubscribeToStateEvents()
     {
-        GameManager.OnGameStateChanged -= OnGameStateChanged;
+        GameStateManager.OnStateChanged += OnStateChanged;
     }
 
-    private void OnGameStateChanged(GameState newState)
+    //Unsubscribe from state events
+    private void UnsubscribeFromStateEvents()
+    {
+        GameStateManager.OnStateChanged -= OnStateChanged;
+    }
+
+    //Reset and start/stop bonus period cycle when playing
+    private void OnStateChanged(GameState newState)
     {
         if (newState == GameState.Playing)
         {
             ResetScore();
+            StartBonusPeriodCycle();
+        }
+        else if (newState == GameState.GameOver || newState == GameState.Paused)
+        {
+            StopBonusPeriodCycle();
+        }
+    }
+
+ 
+
+    //On destroy to unsubscribe from events
+    private void OnDestroy()
+    {
+        UnsubscribeFromStateEvents();
+    }
+
+
+    //Start bonus period cycle
+    private void StartBonusPeriodCycle()
+    {
+        if (bonusPeriodCoroutine != null)
+        {
+            StopCoroutine(bonusPeriodCoroutine);
+        }
+        bonusPeriodCoroutine = StartCoroutine(BonusPeriodCycle());
+    }
+
+    private void StopBonusPeriodCycle()
+    {
+        if (bonusPeriodCoroutine != null)
+        {
+            StopCoroutine(bonusPeriodCoroutine);
+            bonusPeriodCoroutine = null;
+        }
+        isBonusPeriodActive = false;
+    }
+
+    private IEnumerator BonusPeriodCycle()
+    {
+        while (true)
+        {
+            // Wait for the interval (with random variation)
+            float waitTime = gameConfig.bonusPeriodInterval + UnityEngine.Random.Range(0f, gameConfig.bonusPeriodVariation);
+            yield return new WaitForSeconds(waitTime);
+
+            // Generate random bonus points for this period
+            currentBonusPoints = gameConfig.backboardBonusPoints[UnityEngine.Random.Range(0, gameConfig.backboardBonusPoints.Length)];
+
+            // Start bonus period
+            isBonusPeriodActive = true;
+            OnBonusPeriodStarted?.Invoke(currentBonusPoints);
+
+            // Wait for bonus period duration
+            yield return new WaitForSeconds(gameConfig.bonusPeriodDuration);
+
+            // End bonus period
+            isBonusPeriodActive = false;
+            OnBonusPeriodEnded?.Invoke();
         }
     }
 
     public void ResetScore()
     {
-        currentScore = 0;
-        totalShots = 0;
-        successfulShots = 0;
-        perfectShots = 0;
-        backboardBonuses = 0;
-
-        OnScoreUpdated?.Invoke(currentScore);
-        OnShotStatsUpdated?.Invoke(successfulShots, totalShots);
-
+        // Reset centralized data
+        if (GameDataManager.Instance != null)
+        {
+            GameDataManager.Instance.ResetGameData();
+        }
     }
 
+    //Register shot with bool checks for successful, perfect, and backboard bonus
+    //Add score based on shot type
     public void RegisterShot(bool isSuccessful, bool isPerfect = false, bool hasBackboardBonus = false)
     {
-        totalShots++;
-        Debug.Log($"Shot registered: Success={isSuccessful}, Perfect={isPerfect}, Backboard={hasBackboardBonus}");
+        if (GameDataManager.Instance == null) return;
+
+        GameData currentData = GameDataManager.Instance.GetCurrentGameData();
+        
+        // Update shot count
+        GameDataManager.Instance.UpdateShotStats(
+            currentData.successfulShots + (isSuccessful ? 1 : 0),
+            currentData.totalShots + 1
+        );
 
         if (isSuccessful)
         {
-            successfulShots++;
-
-            int points = isPerfect ? perfectShotPoints : normalShotPoints;
+            int points = isPerfect ? gameConfig.perfectShotPoints : gameConfig.normalShotPoints;
 
             if (isPerfect)
             {
-                perfectShots++;
+                GameDataManager.Instance.UpdatePerfectShots(currentData.perfectShots + 1);
             }
 
-            if (hasBackboardBonus)
+            if (hasBackboardBonus && isBonusPeriodActive)
             {
-                int bonusPoints = backboardBonusPoints[UnityEngine.Random.Range(0, backboardBonusPoints.Length)];
-                points += bonusPoints;
-                backboardBonuses++;
-                OnBackboardBonus?.Invoke(bonusPoints);
+                points += currentBonusPoints;
+                GameDataManager.Instance.UpdateBackboardBonuses(currentData.backboardBonuses + 1);
+                OnBackboardBonus?.Invoke(currentBonusPoints);
             }
 
             AddScore(points);
         }
-
-        OnShotStatsUpdated?.Invoke(successfulShots, totalShots);
-
     }
 
+    //Add score to current score
     private void AddScore(int points)
     {
-        currentScore += points;
-        OnScoreUpdated?.Invoke(currentScore);
+        if (GameDataManager.Instance != null)
+        {
+            GameData currentData = GameDataManager.Instance.GetCurrentGameData();
+            GameDataManager.Instance.UpdateScore(currentData.currentScore + points);
+        }
     }
 
+    //Get accuracy from GameDataManager
     public float GetAccuracy()
     {
-        return totalShots > 0 ? (float)successfulShots / totalShots * 100f : 0f;
-    }
-
-    public GameStats GetFinalStats()
-    {
-        return new GameStats
+        if (GameDataManager.Instance != null)
         {
-            finalScore = currentScore,
-            totalShots = totalShots,
-            successfulShots = successfulShots,
-            perfectShots = perfectShots,
-            backboardBonuses = backboardBonuses,
-            accuracy = GetAccuracy()
-        };
+            GameData currentData = GameDataManager.Instance.GetCurrentGameData();
+            return currentData.GetAccuracy();
+        }
+        return 0f;
     }
-}
 
-[System.Serializable]
-public struct GameStats
-{
-    public int finalScore;
-    public int totalShots;
-    public int successfulShots;
-    public int perfectShots;
-    public int backboardBonuses;
-    public float accuracy;
+    //Get final stats from GameDataManager
+    public GameData GetFinalStats()
+    {
+        return GameDataManager.Instance != null ? 
+        GameDataManager.Instance.GetCurrentGameData() : new GameData();
+    }
 }

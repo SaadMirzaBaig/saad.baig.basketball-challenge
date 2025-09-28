@@ -5,16 +5,27 @@ using TMPro;
 public class GameplayUI : MonoBehaviour
 {
     [Header("UI")]
+    //Score text    
     public TMP_Text scoreText;
+    //Game time text
     public TMP_Text timeText;
-    public TMP_Text shotsText;
+    //Pause button
     public Button pauseButton;
+    //Pause panel
     public GameObject pausePanel;
+    //Resume button
     public Button resumeButton;
+    //Main menu button
     public Button mainMenuButton;
+    //Bonus text
 
     public TMP_Text bonusText;
+    //Bonus popup
     public GameObject bonusPopup;
+
+    // to avoid string allocations
+    private int lastScore = -1;
+    private float lastTime = -1f;
 
     // Start is called before the first frame update
     void Start()
@@ -24,12 +35,14 @@ public class GameplayUI : MonoBehaviour
         InitializeUI();
     }
 
-    // Update is called once per frame
+    //On destroy to unsubscribe from events
     void OnDestroy()
     {
         UnsubscribeFromEvents();   
     }
 
+
+    //Setup all UI buttons
     private void SetupButtons()
     {
         if (pauseButton != null)
@@ -42,26 +55,36 @@ public class GameplayUI : MonoBehaviour
             mainMenuButton.onClick.AddListener(OnMainMenuClicked);
     }
 
+    //Subscribe to all events
     private void SubscribeToEvents()
     {
-        ScoreManager.OnScoreUpdated += UpdateScore;
+        GameDataManager.OnScoreChanged += UpdateScore;
+        GameDataManager.OnTimeChanged += UpdateTime;
         ScoreManager.OnBackboardBonus += ShowBonusPopup;
-        GameManager.OnTimeUpdated += UpdateTime;
-        GameManager.OnGameStateChanged += OnGameStateChanged;
+        ScoreManager.OnBonusPeriodStarted += OnBonusPeriodStarted;
+        ScoreManager.OnBonusPeriodEnded += OnBonusPeriodEnded;
     }
 
+    //Unsubscribe from all events
     private void UnsubscribeFromEvents()
     {
-        ScoreManager.OnScoreUpdated -= UpdateScore;
+        GameDataManager.OnScoreChanged -= UpdateScore;
+        GameDataManager.OnTimeChanged -= UpdateTime;
         ScoreManager.OnBackboardBonus -= ShowBonusPopup;
-        GameManager.OnTimeUpdated -= UpdateTime;
-        GameManager.OnGameStateChanged -= OnGameStateChanged;
+        ScoreManager.OnBonusPeriodStarted -= OnBonusPeriodStarted;
+        ScoreManager.OnBonusPeriodEnded -= OnBonusPeriodEnded;
     }
 
+    //Initialize all UI elements
     private void InitializeUI()
     {
-        UpdateScore(0);
-        UpdateTime(GameManager.Instance ? GameManager.Instance.gameTime : 60f);
+        // Initialize with current data from GameDataManager
+        if (GameDataManager.Instance != null)
+        {
+            GameData currentData = GameDataManager.Instance.GetCurrentGameData();
+            UpdateScore(currentData.currentScore);
+            UpdateTime(currentData.remainingTime);
+        }
 
         if (pausePanel != null)
             pausePanel.SetActive(false);
@@ -73,16 +96,22 @@ public class GameplayUI : MonoBehaviour
 
     }
 
+    //Update the score text
     private void UpdateScore(int score)
     {
-        if (scoreText != null)
-            scoreText.text = $"Score: {score}";
+        if (scoreText != null && score != lastScore)
+        {
+            lastScore = score;
+            scoreText.text = "Score: " + score;
+        }
     }
 
+    //Update the time text
     private void UpdateTime(float time)
     {
-        if (timeText != null && GameManager.Instance)
+        if (timeText != null && GameManager.Instance && !Mathf.Approximately(time, lastTime))
         {
+            lastTime = time;
             int minutes = Mathf.FloorToInt(time / 60);
             int seconds = Mathf.FloorToInt(time % 60);
             timeText.text = $"Time: {minutes:00}:{seconds:00}";
@@ -94,7 +123,29 @@ public class GameplayUI : MonoBehaviour
         }
     }
 
+    //Show the bonus popup
     private void ShowBonusPopup(int bonusPoints)
+    {
+        // Only show the popup if we're not in a bonus period (to avoid overwriting the bonus period text)
+        if(bonusPopup != null)
+        {
+            bonusPopup.SetActive(true);
+
+            Invoke(nameof(HideBonusPopup), 2f);
+        }
+    }
+
+    //Hide the bonus popup
+    private void HideBonusPopup()
+    {
+        if(bonusPopup != null)
+        {
+            bonusPopup.SetActive(false);
+        }
+    }
+
+    //Display the bonus points you can get when bonus period starts
+    private void OnBonusPeriodStarted(int bonusPoints)
     {
         if(bonusText != null)
         {
@@ -104,12 +155,11 @@ public class GameplayUI : MonoBehaviour
         if(bonusPopup != null)
         {
             bonusPopup.SetActive(true);
-
-            Invoke(nameof(HideBonusPopup), 2f);
         }
     }
 
-    private void HideBonusPopup()
+    //Disable the bonus popup
+    private void OnBonusPeriodEnded()
     {
         if(bonusPopup != null)
         {
@@ -117,6 +167,7 @@ public class GameplayUI : MonoBehaviour
         }
     }
 
+    //On game state changed
     private void OnGameStateChanged(GameState state)
     {
         if(pausePanel != null)
@@ -125,16 +176,19 @@ public class GameplayUI : MonoBehaviour
         }
     }
 
+    //On pause clicked
     private void OnPauseClicked()
     {
         GameManager.Instance?.PauseGame();
     }
 
+    //On resume clicked
     private void OnResumeClicked()
     {
         GameManager.Instance?.ResumeGame();
     }
 
+    //On main menu clicked
     private void OnMainMenuClicked()
     {
         GameManager.Instance?.BackToMainMenu();

@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a58f855fa2a1ebd45bbc37e4f7ec21ba, type: 3}
+  m_Name: ShotConfig
+  m_EditorClassIdentifier: 
+  perfectShotAngle: 55
+  perfectShotFlightTime: 1.2
+  normalShotAngle: 45
+  normalShotFlightTime: 1.5
+  backboardShotAngle: 55
+  backboardShotFlightTime: 1.3
+  ringShotAngle: 55
+  ringShotFlightTime: 1.4
+  awayShotAngle: 40
+  awayShotFlightTime: 1

@@ -3,27 +3,36 @@ using System.Collections.Generic;
 
 public class BallController : MonoBehaviour
 {
-    public PhysicMaterial ballPhysicsMaterial;
+    [Header("Configuration")]
+    [SerializeField] private BallConfiguration ballConfig;
 
     [Header("Ball State")]
     public bool isInFlight = false;
     public bool hasScored = false;
 
-    private Rigidbody rb;
-    private Vector3 startPosition;
-
-    private int currentPos = 0;
     [SerializeField] private List<Transform> newBallPosition;
+
+    private float flightStartTime;
+    private Rigidbody rb;
+    
+    //Current position index
+    private int currentPos = 0;
 
     private void Awake()
     {
         SetupBallComponents();
         SetNewPosition();
-        //startPosition = transform.position;
     }
 
     private void SetupBallComponents()
     {
+        // Validate configuration
+        if (ballConfig == null)
+        {
+            Debug.LogError("BallController: BallConfiguration is not assigned! Using default values.");
+            CreateDefaultConfig();
+        }
+
         // Setup Rigidbody
         rb = GetComponent<Rigidbody>();
         if (rb == null)
@@ -31,8 +40,8 @@ public class BallController : MonoBehaviour
             rb = gameObject.AddComponent<Rigidbody>();
         }
 
-        rb.mass = 0.6f; // Standard basketball mass
-        rb.drag = 0; // Basketball drag coefficient
+        rb.mass = ballConfig.mass;
+        rb.drag = ballConfig.drag;
         rb.useGravity = true;
 
         // Setup Collider
@@ -40,17 +49,28 @@ public class BallController : MonoBehaviour
         if (sphereCollider == null)
         {
             sphereCollider = gameObject.AddComponent<SphereCollider>();
-            sphereCollider.radius = 0.12f; // Standard basketball radius
         }
+        sphereCollider.radius = ballConfig.radius;
 
         // Apply physics material if provided
-        if (ballPhysicsMaterial != null)
+        if (ballConfig.ballPhysicsMaterial != null)
         {
-            sphereCollider.material = ballPhysicsMaterial;
+            sphereCollider.material = ballConfig.ballPhysicsMaterial;
         }
 
         // Set tag for identification
         gameObject.tag = Constants.BALL_TAG;
+    }
+
+    //Create default configuration
+    private void CreateDefaultConfig()
+    {
+        ballConfig = ScriptableObject.CreateInstance<BallConfiguration>();
+        ballConfig.mass = Constants.DEFAULT_BALL_MASS;
+        ballConfig.radius = Constants.DEFAULT_BALL_RADIUS;
+        ballConfig.drag = Constants.DEFAULT_BALL_DRAG;
+        ballConfig.maxFlightDuration = Constants.DEFAULT_MAX_FLIGHT_DURATION;
+        ballConfig.minYResetThreshold = Constants.DEFAULT_MIN_Y_RESET_THRESHOLD;
     }
 
 
@@ -58,24 +78,44 @@ public class BallController : MonoBehaviour
     {
         if (isInFlight)
         {
-
-            // the speed is slowing down
-            if (rb.velocity.magnitude < 2 )
+            // Out-of-bounds check
+            if (transform.position.y < ballConfig.minYResetThreshold)
             {
-
-                Debug.Log("Ball missed resetting the position");
                 ResetBall();
+                return;
+            }
+
+            // Flight timeout to avoid hanging balls
+            if (Time.time - flightStartTime > ballConfig.maxFlightDuration)
+            {
+                ResetBall();
+                return;
             }
         }
     }
 
- 
+    //On ball scored
     public void OnBallScored()
     {
         hasScored = true;
-        Debug.Log("GOAL! Ball scored!");
+    }
+
+
+    //Start ball flight
+    public void StartFlight(bool willScore)
+    {
+        isInFlight = true;
+        hasScored = willScore;
+        flightStartTime = Time.time;
+        
+        // Update centralized data
+        if (GameDataManager.Instance != null)
+        {
+            GameDataManager.Instance.UpdateBallState(isInFlight, hasScored);
+        }
     }
     
+    //Reset ball properties
     public void ResetBall()
     {
         //If the ball is missed Resgister it with missed target
@@ -88,7 +128,6 @@ public class BallController : MonoBehaviour
             );
         }
 
-        // Reset position
         SetNewPosition();
 
         // Reset physics
@@ -98,13 +137,20 @@ public class BallController : MonoBehaviour
         // Reset state
         isInFlight = false;
         hasScored = false;
+        
+        // Update GameDataManager
+        if (GameDataManager.Instance != null)
+        {
+            GameDataManager.Instance.UpdateBallState(isInFlight, hasScored);
+        }
 
-        Debug.Log("Ball reset to starting position");
+        
     }
 
+    //Set new position
     private void SetNewPosition()
     {
-        Debug.Log("setting up new position");
+        
         if(currentPos < newBallPosition.Count)
         {
             transform.position = newBallPosition[currentPos].position;

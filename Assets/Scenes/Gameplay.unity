@@ -3091,6 +3091,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ae75942995823b442b8a8ed94ac0d5b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  shotConfig: {fileID: 11400000, guid: 3f49c46770fea9e449145335e0f3bf8c, type: 2}
   startPoint: {fileID: 1770417627}
   hoopTarget: {fileID: 1478088771}
   backboardTarget: {fileID: 1831218869}
@@ -3391,6 +3392,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1770417633, guid: 9456647ba6a2e1a4bbaf949868ac188f, type: 3}
+      propertyPath: ballConfig
+      value: 
+      objectReference: {fileID: 11400000, guid: dbc2e72eb4c8dd24c917ad83bcd24778, type: 2}
     - target: {fileID: 1770417633, guid: 9456647ba6a2e1a4bbaf949868ac188f, type: 3}
       propertyPath: minYResetThreshold
       value: -2

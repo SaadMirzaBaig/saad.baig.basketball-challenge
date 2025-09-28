@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7524072f1d651c64a8282425762591c5, type: 3}
+  m_Name: GameConfig
+  m_EditorClassIdentifier: 
+  gameTime: 20
+  maxGameTime: 300
+  minGameTime: 20
+  perfectShotPoints: 3
+  normalShotPoints: 2
+  backboardBonusPoints: 040000000600000008000000
+  bonusPeriodInterval: 5
+  bonusPeriodDuration: 4
+  bonusPeriodVariation: 1
+  scoreThresholds: 140000003200000064000000
+  enableValidation: 1

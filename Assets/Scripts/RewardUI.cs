@@ -4,6 +4,7 @@ using TMPro;
 
 public class RewardUI : MonoBehaviour
 {
+    [Header("UI Text")]
     public TMP_Text finalScoreText;
     public TMP_Text accuracyText;
     public TMP_Text perfectShotsText;
@@ -14,15 +15,35 @@ public class RewardUI : MonoBehaviour
 
     [Header("Star Rating")]
     public GameObject[] stars;
-    public int[] scoreThresholds = { 20, 50, 100 };
+    
+    [Header("Configuration")]
+    [SerializeField] private GameConfiguration gameConfig;
 
     // Start is called before the first frame update
     void Start()
     {
+        ValidateConfiguration();
         SetupButtons();
         DisplayResults();
     }
+
+    //Validate and create default game configuration if not assigned
+    private void ValidateConfiguration()
+    {
+        if (gameConfig == null)
+        {
+            Debug.LogError("RewardUI: GameConfiguration is not assigned! Using default values.");
+            CreateDefaultGameConfig();
+        }
+    }
+
+    private void CreateDefaultGameConfig()
+    {
+        gameConfig = ScriptableObject.CreateInstance<GameConfiguration>();
+        gameConfig.scoreThresholds = new int[] { 20, 50, 100 };
+    }
     
+    //Setup all UI buttons
     private void SetupButtons()
     {
         if (playAgainButton != null)
@@ -34,18 +55,19 @@ public class RewardUI : MonoBehaviour
             mainMenuButton.onClick.AddListener(OnMainMenuClicked);
     }
 
+    //Display the final results and Star rating
     private void DisplayResults()
     {
         if (ScoreManager.Instance == null)
             return;
 
-        GameStats stats = ScoreManager.Instance.GetFinalStats();
+        GameData stats = ScoreManager.Instance.GetFinalStats();
 
         if (finalScoreText != null)
-            finalScoreText.text = "Final Score: " + stats.finalScore;
+            finalScoreText.text = "Final Score: " + stats.currentScore;
 
         if (accuracyText != null)
-            accuracyText.text = $"Accuracy: {stats.accuracy:F1}%";
+            accuracyText.text = $"Accuracy: {stats.GetAccuracy():F1}%";
 
         if (perfectShotsText != null)
             perfectShotsText.text = $"Perfect Shots: {stats.perfectShots}";
@@ -53,10 +75,11 @@ public class RewardUI : MonoBehaviour
         if (bonusCountText != null)
             bonusCountText.text = $"Backboard Bonuses: {stats.backboardBonuses}";
 
-        DisplayStarRating(stats.finalScore);
+        DisplayStarRating(stats.currentScore);
     }
 
 
+    //Display the star rating
     private void DisplayStarRating(int score)
     {
         if (stars == null || stars.Length == 0)
@@ -64,9 +87,9 @@ public class RewardUI : MonoBehaviour
 
         int earnedStars = 0;
 
-        for (int i = 0; i < scoreThresholds.Length; i++)
+        for (int i = 0; i < gameConfig.scoreThresholds.Length; i++)
         {
-            if (score >= scoreThresholds[i])
+            if (score >= gameConfig.scoreThresholds[i])
             {
                 earnedStars = i + 1;
             }
@@ -84,11 +107,13 @@ public class RewardUI : MonoBehaviour
     }
 
 
+    //On play again clicked
     private void OnPlayAgainClicked()
     {
         GameManager.Instance?.StartNewGame();
     }
 
+    //On main menu clicked
     private void OnMainMenuClicked()
     {
         GameManager.Instance?.BackToMainMenu();

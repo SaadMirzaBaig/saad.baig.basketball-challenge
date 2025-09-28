@@ -2,6 +2,9 @@
 
 public class BallThrow : MonoBehaviour
 {
+    [Header("Configuration")]
+    [SerializeField] private ShotConfiguration shotConfig;
+
     [Header("Transforms")]
     [SerializeField] private Transform startPoint;
 
@@ -14,117 +17,149 @@ public class BallThrow : MonoBehaviour
 
     [Header("Rigidbody")]
     public Rigidbody ballRigidbody;
+    
+    //Shot tag to identify the shot intent
     private ShotTag ballShotTag;
+
+    //Ball controller to start the ball flight
+    private BallController ballController;
+
 
     private void Start()
     {
-        if (ballRigidbody.GetComponent<ShotTag>())
+        ValidateComponents();
+    }
+
+    // Validates all required components and sets up references    
+    private void ValidateComponents()
+    {
+        // Validate shot configuration
+        if (shotConfig == null)
         {
-            ballShotTag = ballRigidbody.GetComponent<ShotTag>();
+            Debug.LogError("BallThrow: ShotConfiguration is not assigned! Using default values.");
+            CreateDefaultShotConfig();
         }
-        else
+
+        if (ballRigidbody == null)
         {
-            ballRigidbody.gameObject.AddComponent<ShotTag>();
+            Debug.LogError("BallThrow: ballRigidbody reference is missing! Disabling component.");
+            enabled = false;
+            return;
+        }
+
+        ballController = ballRigidbody.GetComponent<BallController>();
+        if (ballController == null)
+        {
+            Debug.LogError("BallThrow: BallController component not found on ballRigidbody! Disabling component.");
+            enabled = false;
+            return;
+        }
+
+        ballShotTag = ballRigidbody.GetComponent<ShotTag>();
+        if (ballShotTag == null)
+        {
+            Debug.LogWarning("BallThrow: ShotTag component not found, adding one automatically.");
+            ballShotTag = ballRigidbody.gameObject.AddComponent<ShotTag>();
+        }
+
+        // Validate target transforms
+        ValidateTargetTransforms();
+    }
+
+
+    // Validates that all required target transforms are assigned
+    private void ValidateTargetTransforms()
+    {
+        if (startPoint == null)
+        {
+            Debug.LogError("BallThrow: startPoint transform is not assigned!");
+        }
+
+        if (hoopTarget == null)
+        {
+            Debug.LogError("BallThrow: hoopTarget transform is not assigned!");
+        }
+
+        if (backboardTarget == null)
+        {
+            Debug.LogError("BallThrow: backboardTarget transform is not assigned!");
+        }
+
+        if (normalTarget == null)
+        {
+            Debug.LogError("BallThrow: normalTarget transform is not assigned!");
+        }
+
+        if (ringTarget == null)
+        {
+            Debug.LogError("BallThrow: ringTarget transform is not assigned!");
+        }
+
+        if (awayTarget == null)
+        {
+            Debug.LogError("BallThrow: awayTarget transform is not assigned!");
         }
     }
-    /// <summary>
-    /// For debuging the shots
-    /// </summary>
+
+    // Create default shot configuration if not assigned
+    private void CreateDefaultShotConfig()
+    {
+        shotConfig = ScriptableObject.CreateInstance<ShotConfiguration>();
+        shotConfig.perfectShotAngle = 55f;
+        shotConfig.normalShotAngle = 45f;
+        shotConfig.backboardShotAngle = 55f;
+        shotConfig.ringShotAngle = 55f;
+        shotConfig.awayShotAngle = 40f;
+    }
+
+    // For debugging the shots from the editor
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+#if UNITY_EDITOR
+        if (Input.GetKeyUp(KeyCode.Alpha1))
         {
             ThrowNormalShot();
-
         }
 
         if (Input.GetKeyDown(KeyCode.Alpha2))
         {
             ThrowPerfectShot();
-
         }
 
         if (Input.GetKeyDown(KeyCode.Alpha3))
         {
             ThrowBackboardShot();
-
         }
 
         if (Input.GetKeyDown(KeyCode.Alpha4))
         {
             ThrowAtRing();
-
         }
 
         if (Input.GetKeyDown(KeyCode.Alpha5))
         {
             ThrowAwayShot();
         }
-    }
-
-    // Core velocity solver
-    // Different approaches to hit the target
-    // The quadratic approach calculates angle and speed to have the perfect trajectory to the target
-    void ThrowAtTarget_WithQuadraticApproach(Vector3 target)
-    {
-        if (ballRigidbody == null || startPoint == null)
-        {
-            Debug.LogError("Assign Rigidbody and StartPoint first!");
-            return;
-        }
-
-        Vector3 startPos = startPoint.position;
-        Vector3 displacement = target - startPos;
-        Vector3 displacementXZ = new Vector3(displacement.x, 0, displacement.z);
-
-        float distanceXZ = displacementXZ.magnitude;
-        float height = displacement.y;
-        float g = Mathf.Abs(Physics.gravity.y);
-
-        // --- Step 1: Guaranteed min speed solver ---
-        float a = 1f;
-        float b = -2f * g * height;
-        float c = -g * g * distanceXZ * distanceXZ;
-
-        float discriminant = b * b - 4f * a * c;
-        if (discriminant < 0f)
-        {
-            Debug.LogError("Target unreachable!");
-            return;
-        }
-
-        float v2 = (-b + Mathf.Sqrt(discriminant)) / (2f * a);
-        v2 = Mathf.Max(v2, 1e-6f);
-        float v = Mathf.Sqrt(v2);
-
-        // --- Step 2: Compute angles ---
-        float underRoot = v2 * v2 - g * (g * distanceXZ * distanceXZ + 2 * height * v2);
-        underRoot = Mathf.Max(underRoot, 0f);
-
-        float sqrtRoot = Mathf.Sqrt(underRoot);
-        float angle = Mathf.Atan((v2 - sqrtRoot) / (g * distanceXZ));
-
-        // --- Step 3: Compute velocity vector ---
-        Vector3 dirXZ = displacementXZ.normalized;
-        Vector3 velocity = dirXZ * v * Mathf.Cos(angle);
-        velocity.y = v * Mathf.Sin(angle);
-
-        ballRigidbody.velocity = velocity;
-
-        Debug.Log("Shot to " + target + " speed " + v + " angle " + angle * Mathf.Rad2Deg);
+#endif
     }
 
     //The flight arc depends on the time taken to reach the target
-    //Using for normal shot
+    //Using for normal shot 
     void ThrowAtTarget_WithTime(Vector3 targetPosition, float flightTime)
     {
         Vector3 start = startPoint.position;
         Vector3 r = targetPosition - start;            // displacement to target
-        Vector3 v0 = (r / flightTime) - 0.5f * Physics.gravity * flightTime;
+        Vector3 v0 = (r / flightTime) - 0.5f * flightTime * Physics.gravity;
+        
+        // Reset velocity first to avoid conflicts
+        ballRigidbody.velocity = Vector3.zero;
+        ballRigidbody.angularVelocity = Vector3.zero;
+
         ballRigidbody.velocity = v0;
+
     }
 
-    //Calcualte the speed given the angle the ball will be thrown.
+    //Calculate the speed given the angle the ball will be thrown.
     //Using for Perfect/Backboard shot
     void ThrowAtTarget_WithAngle(Vector3 targetPosition, float angleDeg)
     {
@@ -154,53 +189,141 @@ public class BallThrow : MonoBehaviour
         Vector3 v0 = dirXZ * (v * cosT);
         v0.y = v * sinT;
 
+        // Reset velocity first to avoid conflicts
+        ballRigidbody.velocity = Vector3.zero;
+        ballRigidbody.angularVelocity = Vector3.zero;
+        
         ballRigidbody.velocity = v0;
+
+
     }
 
+    // Validates that all components needed for throwing are available
+    // Returns true if all components are valid, false otherwise
+    private bool ValidateThrowComponents()
+    {
+        if (ballRigidbody == null)
+        {
+            Debug.LogError("BallThrow: Cannot throw - ballRigidbody is null!");
+            return false;
+        }
 
+        if (ballController == null)
+        {
+            Debug.LogError("BallThrow: Cannot throw - ballController is null!");
+            return false;
+        }
+
+        if (ballController.isInFlight)
+        {
+            Debug.LogWarning("BallThrow: Cannot throw - ball is already in flight!");
+            return false;
+        }
+
+        return true;
+    }
 
     [ContextMenu("Throw Perfect Shot")]
+    //Throw perfect shot
     public void ThrowPerfectShot()
     {
-        ThrowAtTarget_WithAngle(hoopTarget.position, 55f);
+        if (!ValidateThrowComponents()) return;
 
-        SetShotIntent(ShotTag.IntentType.Perfect,true);
+        try
+        {
+            ThrowAtTarget_WithAngle(hoopTarget.position, shotConfig.perfectShotAngle);
+            SetShotIntent(ShotTag.IntentType.Perfect, true);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("BallThrow: Failed to throw perfect shot: " + e.Message);
+        }
     }
 
+    //Throw backboard shot
     public void ThrowBackboardShot()
     {
-        ThrowAtTarget_WithAngle(backboardTarget.position, 55f);
-        SetShotIntent(ShotTag.IntentType.Backboard,true);
+        if (!ValidateThrowComponents()) return;
 
+        try
+        {
+            ThrowAtTarget_WithAngle(backboardTarget.position, shotConfig.backboardShotAngle);
+            SetShotIntent(ShotTag.IntentType.Backboard, true);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("BallThrow: Failed to throw backboard shot: " + e.Message);
+        }
     }
 
+    //Throw normal shot
     public void ThrowNormalShot()
     {
-        ThrowAtTarget_WithTime(normalTarget.position,1.5f);
-        SetShotIntent(ShotTag.IntentType.Normal,true);
+        if (!ValidateThrowComponents()) return;
 
+        try
+        {
+            ThrowAtTarget_WithTime(normalTarget.position, shotConfig.normalShotFlightTime);
+            SetShotIntent(ShotTag.IntentType.Normal, true);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("BallThrow: Failed to throw normal shot: " + e.Message);
+        }
     }
 
+    //Throw ring shot
     public void ThrowAtRing()
     {
-        ThrowAtTarget_WithAngle(ringTarget.position, 55f);
-        SetShotIntent(ShotTag.IntentType.Ring, false);
+        if (!ValidateThrowComponents()) return;
+
+        try
+        {
+            ThrowAtTarget_WithAngle(ringTarget.position, shotConfig.ringShotAngle);
+            SetShotIntent(ShotTag.IntentType.Ring, false);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("BallThrow: Failed to throw ring shot: " + e.Message);
+        }
     }
 
+    //Throw away shot
     public void ThrowAwayShot()
     {
-        ThrowAtTarget_WithAngle(awayTarget.position, 40f);
-        SetShotIntent(ShotTag.IntentType.Away, false);
+        if (!ValidateThrowComponents()) return;
+
+        try
+        {
+            ThrowAtTarget_WithAngle(awayTarget.position, shotConfig.awayShotAngle);
+            SetShotIntent(ShotTag.IntentType.Away, false);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("BallThrow: Failed to throw away shot: " + e.Message);
+        }
     }
 
 
+   
+
+    //Set the shot intent and starts ball flight
+    /// <param name="intent">The type of shot being attempted</param>
+    /// <param name="isScored">Whether this shot should be considered successful</param>
     void SetShotIntent(ShotTag.IntentType intent, bool isScored)
     {
-        ballRigidbody.GetComponent<BallController>().isInFlight = true;
-        ballRigidbody.GetComponent<BallController>().hasScored = isScored;
+        if (ballController != null)
+        {
+            ballController.StartFlight(isScored);
+        }
 
-        ballShotTag.shotIntent = intent;
-        
-        
+        if (ballShotTag != null)
+        {
+            ballShotTag.shotIntent = intent;
+        }
     }
+
+    
+    
+
 }

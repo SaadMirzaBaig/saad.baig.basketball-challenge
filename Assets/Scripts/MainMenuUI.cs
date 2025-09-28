@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class MainMenuUI : MonoBehaviour
 {
@@ -14,7 +15,7 @@ public class MainMenuUI : MonoBehaviour
         SetupButtons();
     }
 
-
+    //Setup all UI buttons
     private void SetupButtons()
     {
         if (playButton != null)
@@ -24,20 +25,22 @@ public class MainMenuUI : MonoBehaviour
             exitButton.onClick.AddListener(OnExitClicked);
     }
 
+    //On play clicked
     private void OnPlayClicked()
     {
-        Debug.Log("Play button clicked");
         GameManager.Instance?.StartNewGame();
 
     }
 
+    //On exit clicked for editor and build
     private void OnExitClicked()
     {
-        Debug.Log("Exit button clicked");
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
     Application.Quit();
 #endif
     }
+
+
 }

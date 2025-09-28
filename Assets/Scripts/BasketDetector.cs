@@ -3,13 +3,17 @@ using UnityEngine;
 public class BasketDetector : MonoBehaviour
 {
     [Header("Basket Detection Setup")]
-    public Transform hoopCenter;
-    public float hoopRadius = 0.23f;
-    public float detectionHeight = 0.5f;
+    [SerializeField] private Transform hoopCenter;
+    private float hoopRadius = Constants.HOOP_RADIUS;
+    private float detectionHeight = Constants.DETECTION_HEIGHT;
 
 
     // Detection components
     private SphereCollider detectionTrigger;
+    
+    // To avoid repeated GetComponent calls
+    private BallController ballController;
+    private ShotTag shotTag;
 
 
     private void Awake()
@@ -17,6 +21,7 @@ public class BasketDetector : MonoBehaviour
         SetupBasketDetection();
     }
 
+    //Setup basket detection zone
     private void SetupBasketDetection()
     {
         // Create detection zone below the hoop
@@ -38,27 +43,29 @@ public class BasketDetector : MonoBehaviour
         // Setup trigger collider for detection
         detectionTrigger = detectionZone.AddComponent<SphereCollider>();
         detectionTrigger.isTrigger = true;
-        detectionTrigger.radius = hoopRadius * 1.1f; // Slightly larger than hoop for reliable detection
+        detectionTrigger.radius = hoopRadius * Constants.DETECTION_RADIUS_MULTIPLIER; // Slightly larger than hoop for reliable detection
 
         // Add trigger handler component
         BasketTriggerHandler triggerHandler = detectionZone.AddComponent<BasketTriggerHandler>();
         triggerHandler.Initialize(this);
 
-        Debug.Log("Basket detection setup complete");
+  
     }
 
+    //On ball enter detection zone
     public void OnBallEnterDetection(Collider ballCollider)
     {
-    
-        BallController ball = ballCollider.GetComponent<BallController>();
-        if (ball == null) return;
+        // to avoid repeated GetComponent calls
+        if (ballController == null || ballController.gameObject != ballCollider.gameObject)
+        {
+            ballController = ballCollider.GetComponent<BallController>();
+            shotTag = ballCollider.GetComponent<ShotTag>();
+        }
+        
+        if (ballController == null) return;
 
-        var tag = ballCollider.GetComponent<ShotTag>();
-        bool isPerfect;
-        bool hasBackboardBonus;
-
-        isPerfect = tag.shotIntent == ShotTag.IntentType.Perfect;
-        hasBackboardBonus = tag.shotIntent == ShotTag.IntentType.Backboard;
+        bool isPerfect = shotTag != null && shotTag.shotIntent == ShotTag.IntentType.Perfect;
+        bool hasBackboardBonus = shotTag != null && shotTag.shotIntent == ShotTag.IntentType.Backboard;
 
         if (ScoreManager.Instance != null)
         {
@@ -70,16 +77,9 @@ public class BasketDetector : MonoBehaviour
         }
 
         // Notify the ball that it scored
-        ball.OnBallScored();
-
-        Debug.Log("BASKET! Ball successfully entered the hoop with tag ! " + tag.shotIntent);
-    }
-
-    public void OnBallExitDetection(Collider ballCollider)
-    {
-
-        Debug.Log("Ball exited basket detection zone");
+        ballController.OnBallScored();
 
     }
+
 
 }
