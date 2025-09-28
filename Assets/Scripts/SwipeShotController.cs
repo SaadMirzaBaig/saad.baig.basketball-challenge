@@ -12,6 +12,8 @@ public class SwipeShotController : MonoBehaviour
     private float sliderSpeed = 900f; // how quivk to fill the slider
     [SerializeField] private float swipeTimeLimit = 0.5f; // Max time allowed for swipe
 
+    [SerializeField] private float shotTypeDisplayDuration = 2.0f; // How long to show the shot type before resetting
+    
     [Header("Shot Zones (0-1 range)")]
     [Range(0f, 1f)]
     [SerializeField] private float perfectShotZoneStart = 0.5f; // perefet start
@@ -341,7 +343,7 @@ public class SwipeShotController : MonoBehaviour
                     break;
             }
 
-            Invoke(nameof(ResetUIAfterDelay), 0.5f);
+            Invoke(nameof(ResetUIAfterDelay), shotTypeDisplayDuration);
         }
         catch (System.Exception e)
         {
